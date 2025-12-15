@@ -1,0 +1,67 @@
+# =========================
+# Build artifacts (CMake)
+# =========================
+build/
+build-*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# =========================
+# Executables
+# =========================
+tcp_server
+tcp_client
+*.out
+*.exe
+
+# =========================
+# Object / Library files
+# =========================
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.lib
+
+# =========================
+# VSCode
+# =========================
+.vscode/*
+!.vscode/c_cpp_properties.json
+!.vscode/settings.json
+!.vscode/launch.json
+
+# =========================
+# OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Coverage / Profiling
+# =========================
+*.gcda
+*.gcno
+*.gcov
+perf.data*
+
+# =========================
+# Python (혹시 대비)
+# =========================
+__pycache__/
+*.pyc

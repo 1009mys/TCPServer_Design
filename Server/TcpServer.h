@@ -1,0 +1,49 @@
+#pragma once
+#include <thread>
+#include <map>
+#include <atomic>
+#include <netinet/in.h>
+#include <unistd.h>
+#include "json.hpp"
+#include "ThreadSafeQueue.h"
+#include "Message.h"
+#include "Dispatcher.h"
+
+class TcpServer {
+public:
+    explicit TcpServer(int port);
+    ~TcpServer();
+
+    void start();
+    void stop();
+
+    void sendToClient(int client_id, const nlohmann::json& json);
+
+    void addHandler(const std::string& type, Dispatcher::Handler handler) {
+        dispatcher_.registerHandler(type, std::move(handler));
+    }
+
+private:
+    void acceptLoop();
+    void recvLoop();
+    void sendLoop();
+    void processLoop();
+
+    int server_fd_;
+    int port_;
+    std::atomic<bool> running_{false};
+
+    std::thread accept_thread_;
+    std::thread recv_thread_;
+    std::thread send_thread_;
+
+    std::mutex client_mutex_;
+    std::map<int, int> clients_; // client_id -> socket_fd
+    int next_client_id_ = 1;
+
+    Dispatcher dispatcher_;
+
+    ThreadSafeQueue<Message> recv_queue_;
+    ThreadSafeQueue<Message> send_queue_;
+    std::thread process_thread_;
+};

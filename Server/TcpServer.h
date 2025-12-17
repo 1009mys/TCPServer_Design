@@ -36,6 +36,7 @@ private:
     std::thread accept_thread_;
     std::thread recv_thread_;
     std::thread send_thread_;
+    std::thread process_thread_;
 
     std::mutex client_mutex_;
     std::map<int, int> clients_; // client_id -> socket_fd
@@ -45,5 +46,4 @@ private:
 
     ThreadSafeQueue<Message> recv_queue_;
     ThreadSafeQueue<Message> send_queue_;
-    std::thread process_thread_;
 };

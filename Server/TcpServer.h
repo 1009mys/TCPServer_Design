@@ -10,6 +10,7 @@
 #include "Message.h"
 #include "Dispatcher.h"
 #include "RequestHandler.h"
+#include "Logger.h"
 
 class TcpServer
 {
@@ -32,6 +33,11 @@ public:
         recv_thread_count_ = count;
     }
 
+    void setLogLevel(LogLevel level)
+    {
+        Logger::instance().setLevel(level);
+    }
+
 private:
     void acceptLoop();
     void recvLoop(int thread_index);
@@ -45,12 +51,15 @@ private:
     int port_;
     std::atomic<bool> running_{false};
 
-    std::thread accept_thread_;
+    int accept_thread_count_ = 1;
     int recv_thread_count_ = 4;
-    std::vector<std::thread> recv_threads_;
+    int process_thread_count_ = 4;
     int send_thread_count_ = 1;
+
+    std::vector<std::thread> accept_threads_;
+    std::vector<std::thread> recv_threads_;
+    std::vector<std::thread> process_threads_;
     std::vector<std::thread> send_threads_;
-    std::thread process_thread_;
 
     std::mutex client_mutex_;
     std::map<int, int> clients_; // client_id -> socket_fd

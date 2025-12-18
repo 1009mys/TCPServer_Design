@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 
 #include "TcpServer.h"
+#include "Logger.h"
 
 using namespace std;
 
@@ -88,71 +89,58 @@ void TcpServer::start()
 
     running_ = true;
 
-    accept_thread_ = std::thread(&TcpServer::acceptLoop, this);
+    for (int i = 0; i < accept_thread_count_; ++i)
+    {
+        accept_threads_.emplace_back(&TcpServer::acceptLoop, this);
+    }
     for (int i = 0; i < recv_thread_count_; ++i)
     {
         recv_threads_.emplace_back(&TcpServer::recvLoop, this, i);
+    }
+    for (int i = 0; i < process_thread_count_; ++i)
+    {
+        process_threads_.emplace_back(&TcpServer::processLoop, this);
     }
     for (int i = 0; i < send_thread_count_; ++i)
     {
         send_threads_.emplace_back(&TcpServer::sendLoop, this);
     }
-    process_thread_ = std::thread(&TcpServer::processLoop, this);
-
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Server started on port " << port_ << std::endl;
-#endif
 }
 
 void TcpServer::stop()
 {
     running_ = false;
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Closing server socket..." << std::endl;
-#endif
+    
     close(server_fd_);
 
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Server stopping..." << std::endl;
-#endif
     // 큐 종료 신호 전송
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Shutting down queues..." << std::endl;
-#endif
     recv_queue_.shutdown();
     send_queue_.shutdown();
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Joining threads..." << std::endl;
-#endif
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Waiting for accept thread to finish..." << std::endl;
-#endif
-    if (accept_thread_.joinable())
-        accept_thread_.join();
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Waiting for receive threads to finish..." << std::endl;
-#endif
+
+    for (auto &t : accept_threads_)
+    {
+        if (t.joinable())
+            t.join();
+    }
+
     for (auto &t : recv_threads_)
     {
         if (t.joinable())
             t.join();
     }
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Waiting for send thread to finish..." << std::endl;
-#endif
+
     for (auto &t : send_threads_)
     {
         if (t.joinable())
             t.join();
     }
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Waiting for process thread to finish..." << std::endl;
-#endif
-    if (process_thread_.joinable())
-        process_thread_.join();
-#ifdef DEBUG_BUILD
-    std::cout << "[TcpServer] Server stopped." << std::endl;
-#endif
+
+    for (auto &t : process_threads_)
+    {
+        if (t.joinable())
+            t.join();
+    }
+
 }
 
 void TcpServer::acceptLoop()
@@ -193,9 +181,7 @@ void TcpServer::acceptLoop()
             continue;
         }
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] New client connected: fd=" << client_fd << "\n";
-#endif
+        LOG_INFO("[TcpServer] New client connected: fd=", client_fd);
 
         int client_id;
         {
@@ -216,16 +202,10 @@ void TcpServer::recvLoop(int thread_index)
 {
     while (running_)
     {
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Receive thread " << thread_index << " waiting for data...\n";
-#endif
         // 1) 이 스레드에 할당된 클라이언트만 가져오기
         std::vector<std::pair<int, int>> snapshot;
         snapshot.reserve(64);
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Building snapshot for thread " << thread_index << "\n";
-#endif
         {
             std::lock_guard<std::mutex> lock1(client_mutex_);
             std::lock_guard<std::mutex> lock2(socket_assignment_mutex_);
@@ -238,9 +218,6 @@ void TcpServer::recvLoop(int thread_index)
                 }
             }
         }
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Thread " << thread_index << " has " << snapshot.size() << " assigned clients.\n";
-#endif
 
         if (snapshot.empty())
         {
@@ -249,9 +226,6 @@ void TcpServer::recvLoop(int thread_index)
             continue;
         }
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Preparing select for thread " << thread_index << "\n";
-#endif
         // 2) select 준비
         fd_set rfds;
         FD_ZERO(&rfds);
@@ -263,39 +237,26 @@ void TcpServer::recvLoop(int thread_index)
                 maxfd = fd;
         }
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Thread " << thread_index << " calling select...\n";
-#endif
         timeval tv{};
         tv.tv_sec = 0;
-        tv.tv_usec = 100 * 10000; // 100ms
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Thread " << thread_index << " waiting on select with maxfd=" << maxfd << "\n";
-#endif
+        tv.tv_usec = 100 * 1000; // 100ms
 
         int ready = ::select(maxfd + 1, &rfds, nullptr, nullptr, &tv);
         if (ready <= 0)
             continue; // timeout or error
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Thread " << thread_index << " select returned " << ready << "\n";
-#endif
         // 3) 읽을 수 있는 fd만 처리
         for (auto &[client_id, fd] : snapshot)
         {
             if (!FD_ISSET(fd, &rfds))
                 continue;
 
-#ifdef DEBUG_BUILD
-            cout << "[TcpServer] Data available from client_id=" << client_id << " fd=" << fd << "\n";
-#endif
+            LOG_DEBUG("[TcpServer] Data available from client_id=", client_id, " fd=", fd);
 
             uint32_t len_net = 0;
             if (!recvAll(fd, &len_net, sizeof(len_net)))
             {
-#ifdef DEBUG_BUILD
-                std::cout << "[TcpServer] Client disconnected (len) client_id=" << client_id << "\n";
-#endif
+                LOG_INFO("[TcpServer] Client disconnected (len) client_id=", client_id);
                 int fd_to_close;
                 {
                     std::lock_guard<std::mutex> lock(client_mutex_);
@@ -317,9 +278,7 @@ void TcpServer::recvLoop(int thread_index)
             uint32_t len = ntohl(len_net);
             if (len == 0 || len > 4 * 1024 * 1024)
             { // 방어(4MB 제한 예시)
-#ifdef DEBUG_BUILD
-                std::cout << "[TcpServer] Invalid length=" << len << " client_id=" << client_id << "\n";
-#endif
+                LOG_WARN("[TcpServer] Invalid length=", len, " client_id=", client_id);
                 int fd_to_close;
                 {
                     std::lock_guard<std::mutex> lock(client_mutex_);
@@ -341,9 +300,7 @@ void TcpServer::recvLoop(int thread_index)
             std::string payload(len, '\0');
             if (!recvAll(fd, payload.data(), len))
             {
-#ifdef DEBUG_BUILD
-                std::cout << "[TcpServer] Client disconnected (payload) client_id=" << client_id << "\n";
-#endif
+                LOG_INFO("[TcpServer] Client disconnected (payload) client_id=", client_id);
                 int fd_to_close;
                 {
                     std::lock_guard<std::mutex> lock(client_mutex_);
@@ -366,9 +323,7 @@ void TcpServer::recvLoop(int thread_index)
             auto j = nlohmann::json::parse(payload, nullptr, false);
             if (j.is_discarded())
             {
-#ifdef DEBUG_BUILD
-                std::cout << "[TcpServer] Invalid JSON from client_id=" << client_id << "\n";
-#endif
+                LOG_WARN("[TcpServer] Invalid JSON from client_id=", client_id);
                 // 에러 응답 보내도 되고, 무시해도 됨
                 nlohmann::json err =
                     {
@@ -378,9 +333,7 @@ void TcpServer::recvLoop(int thread_index)
                 send_queue_.push({client_id, err});
                 continue;
             }
-#ifdef DEBUG_BUILD
-            std::cout << "[TcpServer] Received message from client " << client_id << "\n";
-#endif
+            LOG_DEBUG("[TcpServer] Received message from client ", client_id);
             recv_queue_.push({client_id, j});
         }
     }
@@ -401,18 +354,14 @@ void TcpServer::sendLoop()
         if (it == clients_.end())
             continue;
 
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Sending message to client " << msg.client_id << "\n";
-#endif
+        LOG_DEBUG("[TcpServer] Sending message to client ", msg.client_id);
         int fd = it->second;
         std::string data = msg.json.dump();
 
         uint32_t len = htonl(data.size());
         if (!sendAll(fd, &len, sizeof(len)) || !sendAll(fd, data.data(), data.size()))
         {
-#ifdef DEBUG_BUILD
-            std::cout << "[TcpServer] Failed to send to client " << msg.client_id << ", closing\n";
-#endif
+            LOG_WARN("[TcpServer] Failed to send to client ", msg.client_id, ", closing");
             ::close(fd);
             clients_.erase(it);
         }
@@ -437,9 +386,7 @@ void TcpServer::processLoop()
         // 종료용
         if (msg.json.contains("type") && msg.json["type"] == "_quit")
             continue;
-#ifdef DEBUG_BUILD
-        cout << "[TcpServer] Processing message from client " << msg.client_id << "\n";
-#endif
+        LOG_DEBUG("[TcpServer] Processing message from client ", msg.client_id);
         // 디스패치
         nlohmann::json response = dispatcher_.dispatch(msg);
 

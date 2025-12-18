@@ -2,37 +2,11 @@
 #include "json.hpp"
 #include "RequestHandler.h"
 #include "Message.h"
+#include "Logger.h"
 
 using nlohmann::json;
 using namespace std;
 
-nlohmann::json ExampleHandler::handle(const Message &msg)
-{
-    const json &req = msg.json;
-    const string type = req.value("type", "");
-
-    if (type == "ping")
-    {
-        return handlePing(msg);
-    }
-    else if (type == "echo")
-    {
-        return handleEcho(msg);
-    }
-    else if (type == "add")
-    {
-        return handleAdd(msg);
-    }
-    else
-    {
-        json res;
-        res["type"] = "error";
-        res["ok"] = false;
-        res["req_id"] = req.value("req_id", nullptr);
-        res["error"] = "unknown_type: " + type;
-        return res;
-    }
-}
 
 json ExampleHandler::handlePing(const Message &msg)
 {
@@ -49,10 +23,7 @@ json ExampleHandler::handlePing(const Message &msg)
     const json &req = msg.json;
     int client_id = msg.client_id;
 
-#ifdef DEBUG_BUILD
-    cout << "[RequestHandler] Received ping from client "
-         << client_id << "\n";
-#endif
+    LOG_DEBUG("[RequestHandler] Received ping from client ", client_id);
 
     json res;
     res["type"] = "pong";
@@ -80,10 +51,7 @@ json ExampleHandler::handleEcho(const Message &msg)
     const json &req = msg.json;
     int client_id = msg.client_id;
 
-#ifdef DEBUG_BUILD
-    cout << "[RequestHandler] Received echo from client "
-         << client_id << "\n";
-#endif
+    LOG_DEBUG("[RequestHandler] Received echo from client ", client_id);
 
     json res;
     res["type"] = "echo_resp";
@@ -112,9 +80,7 @@ json ExampleHandler::handleAdd(const Message &msg)
     const json &req = msg.json;
     int client_id = msg.client_id;
 
-#ifdef DEBUG_BUILD
-    cout << "[RequestHandler] Received add request\n";
-#endif
+    LOG_DEBUG("[RequestHandler] Received add request from client ", client_id);
 
     const auto &payload = req.at("payload");
     int a = payload.value("a", 0);

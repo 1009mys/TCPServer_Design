@@ -6,6 +6,7 @@
 
 #include "TcpServer.h" // 네가 만든 서버 클래스
 #include "json.hpp"
+#include "Logger.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -34,6 +35,9 @@ int main(int argc, char **argv)
     {
         TcpServer server(port);
 
+        // 로그 레벨 설정 (DEBUG, INFO, WARN, ERROR)
+        server.setLogLevel(LogLevel::DEBUG);
+        
         server.setRecvThreadCount(1);
 
         ExampleHandler handler;
@@ -44,8 +48,8 @@ int main(int argc, char **argv)
         // 서버 시작
         server.start();
 
-        cout << "[Server] Listening on port " << port << "\n";
-        cout << "[Server] Press Ctrl+C to stop.\n";
+        LOG_INFO("[Server] Listening on port ", port);
+        LOG_INFO("[Server] Press Ctrl+C to stop.");
 
         // 메인 루프: 신호 대기
         while (g_run.load())
@@ -53,14 +57,14 @@ int main(int argc, char **argv)
             this_thread::sleep_for(milliseconds(200));
         }
 
-        cout << "\n[Server] Stopping...\n";
+        LOG_INFO("\n[Server] Stopping...");
         server.stop();
-        cout << "[Server] Stopped.\n";
+        LOG_INFO("[Server] Stopped.");
         return 0;
     }
     catch (const std::exception &e)
     {
-        cerr << "[Fatal] " << e.what() << "\n";
+        LOG_ERROR("[Fatal] ", e.what());
         return 1;
     }
 }

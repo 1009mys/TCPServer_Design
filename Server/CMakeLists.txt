@@ -7,8 +7,10 @@ add_executable(tcp_server
 target_sources(tcp_server
     PRIVATE
         TcpServer.cpp
+        RequestHandler.cpp
         Message.h
         ThreadSafeQueue.h
+        RequestHandler.h
 )
 
 target_include_directories(tcp_server

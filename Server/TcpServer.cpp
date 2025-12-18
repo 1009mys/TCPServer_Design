@@ -4,7 +4,7 @@
 
 using namespace std;
 
-static bool recvAll(int fd, void *buf, size_t len)
+bool TcpServer::recvAll(int fd, void *buf, size_t len)
 {
     char *p = static_cast<char *>(buf);
     size_t got = 0;
@@ -24,7 +24,7 @@ static bool recvAll(int fd, void *buf, size_t len)
     return true;
 }
 
-static bool sendAll(int fd, const void *buf, size_t len)
+bool TcpServer::sendAll(int fd, const void *buf, size_t len)
 {
     const char *p = static_cast<const char *>(buf);
     size_t sent = 0;
@@ -47,60 +47,26 @@ static bool sendAll(int fd, const void *buf, size_t len)
 TcpServer::TcpServer(int port) : port_(port)
 {
     // ping -> pong
-    dispatcher_.registerHandler("ping",
-                                [](int client_id, const nlohmann::json &req)
-                                {
-#ifdef DEBUG_BUILD
-                                    cout << "[Dispatcher] Received ping from client " << client_id << "\n";
-#endif
-                                    nlohmann::json res;
-                                    res["type"] = "pong";
-                                    res["ok"] = true;
-                                    if (req.contains("req_id"))
-                                        res["req_id"] = req["req_id"];
-                                    res["payload"] =
-                                        {
-                                            {"client_id", client_id},
-                                            {"server_ts", (int64_t)time(nullptr)}};
-                                    return res;
-                                });
+    dispatcher_.registerHandler(
+        "ping",
+        [this](int cid, const nlohmann::json &req)
+        {
+            return handler_.handlePing(cid, req);
+        });
 
-    // echo
-    dispatcher_.registerHandler("echo",
-                                [](int client_id, const nlohmann::json &req)
-                                {
-#ifdef DEBUG_BUILD
-                                    cout << "[Dispatcher] Received echo from client " << client_id << "\n";
-#endif
-                                    nlohmann::json res;
-                                    res["type"] = "echo_resp";
-                                    res["ok"] = true;
-                                    if (req.contains("req_id"))
-                                        res["req_id"] = req["req_id"];
-                                    res["payload"] = req.value("payload", nlohmann::json::object());
-                                    res["payload"]["client_id"] = client_id;
-                                    return res;
-                                });
+    dispatcher_.registerHandler(
+        "echo",
+        [this](int cid, const nlohmann::json &req)
+        {
+            return handler_.handleEcho(cid, req);
+        });
 
-    // add: payload.a + payload.b
-    dispatcher_.registerHandler("add",
-                                [](int, const nlohmann::json &req)
-                                {
-#ifdef DEBUG_BUILD
-                                    cout << "[Dispatcher] Received add request\n";
-#endif
-                                    const auto &p = req.at("payload");
-                                    int a = p.value("a", 0);
-                                    int b = p.value("b", 0);
-
-                                    nlohmann::json res;
-                                    res["type"] = "add_resp";
-                                    res["ok"] = true;
-                                    if (req.contains("req_id"))
-                                        res["req_id"] = req["req_id"];
-                                    res["payload"] = {{"sum", a + b}};
-                                    return res;
-                                });
+    dispatcher_.registerHandler(
+        "add",
+        [this](int cid, const nlohmann::json &req)
+        {
+            return handler_.handleAdd(cid, req);
+        });
 }
 
 TcpServer::~TcpServer()

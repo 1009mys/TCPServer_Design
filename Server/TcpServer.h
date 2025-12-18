@@ -8,6 +8,7 @@
 #include "ThreadSafeQueue.h"
 #include "Message.h"
 #include "Dispatcher.h"
+#include "RequestHandler.h"
 
 class TcpServer
 {
@@ -31,6 +32,9 @@ private:
     void sendLoop();
     void processLoop();
 
+    static bool recvAll(int fd, void *buf, size_t len);
+    static bool sendAll(int fd, const void *buf, size_t len);
+
     int server_fd_;
     int port_;
     std::atomic<bool> running_{false};
@@ -45,6 +49,7 @@ private:
     int next_client_id_ = 1;
 
     Dispatcher dispatcher_;
+    RequestHandler handler_;
 
     ThreadSafeQueue<Message> recv_queue_;
     ThreadSafeQueue<Message> send_queue_;

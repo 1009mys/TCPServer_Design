@@ -23,6 +23,11 @@ public:
             return makeError(req, "missing_or_invalid_type");
         }
 
+        if (!req.contains("req_id"))
+        {
+            return makeError(req, "missing_req_id");
+        }
+
         const string type = req["type"].get<string>();
         auto it = handlers_.find(type);
         if (it == handlers_.end())

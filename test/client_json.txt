@@ -1,0 +1,5 @@
+{"type": "ping","req_id": "req-001"}
+
+{"type": "echo","req_id": "req-002","payload": {"msg": "hello server","value": 123}}
+
+{"type": "add","req_id": "req-004","payload": {"a": 10,"b": 32}}

@@ -1,11 +1,12 @@
 #include <iostream>
 #include "json.hpp"
 #include "RequestHandler.h"
+#include "Message.h"
 
 using nlohmann::json;
 using namespace std;
 
-json RequestHandler::handlePing(int /*client_id*/, const json &req)
+json RequestHandler::handlePing(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -16,6 +17,10 @@ json RequestHandler::handlePing(int /*client_id*/, const json &req)
      * }
      *
      */
+
+    const json &req = msg.json;
+    int client_id = msg.client_id;
+
 #ifdef DEBUG_BUILD
     cout << "[RequestHandler] Received ping from client "
          << client_id << "\n";
@@ -32,7 +37,7 @@ json RequestHandler::handlePing(int /*client_id*/, const json &req)
     return res;
 }
 
-json RequestHandler::handleEcho(int /*client_id*/, const json &req)
+json RequestHandler::handleEcho(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -43,6 +48,10 @@ json RequestHandler::handleEcho(int /*client_id*/, const json &req)
      * }
      *
      */
+
+    const json &req = msg.json;
+    int client_id = msg.client_id;
+
 #ifdef DEBUG_BUILD
     cout << "[RequestHandler] Received echo from client "
          << client_id << "\n";
@@ -58,7 +67,7 @@ json RequestHandler::handleEcho(int /*client_id*/, const json &req)
     return res;
 }
 
-json RequestHandler::handleAdd(int /*client_id*/, const json &req)
+json RequestHandler::handleAdd(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -71,6 +80,10 @@ json RequestHandler::handleAdd(int /*client_id*/, const json &req)
      *   }
      * }
      */
+
+    const json &req = msg.json;
+    int client_id = msg.client_id;
+
 #ifdef DEBUG_BUILD
     cout << "[RequestHandler] Received add request\n";
 #endif

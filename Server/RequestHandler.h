@@ -1,9 +1,10 @@
 #include "json.hpp"
+#include "Message.h"
 
 class RequestHandler
 {
 public:
-    nlohmann::json handlePing(int client_id, const nlohmann::json &req);
-    nlohmann::json handleEcho(int client_id, const nlohmann::json &req);
-    nlohmann::json handleAdd(int client_id, const nlohmann::json &req);
+    nlohmann::json handlePing(const Message &msg);
+    nlohmann::json handleEcho(const Message &msg);
+    nlohmann::json handleAdd(const Message &msg);
 };

@@ -8,15 +8,20 @@ using namespace std;
 class Dispatcher
 {
 public:
-    using Handler = function<json(int client_id, const json &req)>;
+    using Handler = function<json(const Message &)>;
 
     void registerHandler(const string &type, Handler fn)
     {
         handlers_[type] = move(fn);
     }
 
-    json dispatch(int client_id, const json &req) const
+    json dispatch(const Message &msg) const
     {
+        // 통신에 필요한 항목만 체크한다.
+
+        const json &req = msg.json;
+        const int client_id = msg.client_id;
+
         // type 체크
         if (!req.contains("type") || !req["type"].is_string())
         {
@@ -37,7 +42,7 @@ public:
 
         try
         {
-            return it->second(client_id, req);
+            return it->second(msg);
         }
         catch (const exception &e)
         {

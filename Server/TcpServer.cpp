@@ -49,23 +49,23 @@ TcpServer::TcpServer(int port) : port_(port)
     // ping -> pong
     dispatcher_.registerHandler(
         "ping",
-        [this](int cid, const nlohmann::json &req)
+        [this](Message msg)
         {
-            return handler_.handlePing(cid, req);
+            return handler_.handlePing(msg);
         });
 
     dispatcher_.registerHandler(
         "echo",
-        [this](int cid, const nlohmann::json &req)
+        [this](Message msg)
         {
-            return handler_.handleEcho(cid, req);
+            return handler_.handleEcho(msg);
         });
 
     dispatcher_.registerHandler(
         "add",
-        [this](int cid, const nlohmann::json &req)
+        [this](Message msg)
         {
-            return handler_.handleAdd(cid, req);
+            return handler_.handleAdd(msg);
         });
 }
 
@@ -312,7 +312,7 @@ void TcpServer::processLoop()
         cout << "[TcpServer] Processing message from client " << msg.client_id << "\n";
 #endif
         // 디스패치
-        nlohmann::json response = dispatcher_.dispatch(msg.client_id, msg.json);
+        nlohmann::json response = dispatcher_.dispatch(msg);
 
         // 응답 송신 큐로
         send_queue_.push({msg.client_id, response});

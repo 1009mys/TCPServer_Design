@@ -32,10 +32,11 @@ int main(int argc, char **argv)
 
     try
     {
-        ExampleHandler handler;
-
         TcpServer server(port);
 
+        server.setRecvThreadCount(1);
+
+        ExampleHandler handler;
         server.addHandler("ping", ExampleHandler::handlePing);
         server.addHandler("echo", ExampleHandler::handleEcho);
         server.addHandler("add", ExampleHandler::handleAdd);

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <netinet/in.h>
 #include <unistd.h>
+
 #include "json.hpp"
 #include "ThreadSafeQueue.h"
 #include "Message.h"
@@ -26,6 +27,11 @@ public:
         dispatcher_.registerHandler(type, std::move(handler));
     }
 
+    void setRecvThreadCount(int count)
+    {
+        recv_thread_count_ = count;
+    }
+
 private:
     void acceptLoop();
     void recvLoop(int thread_index);
@@ -42,7 +48,8 @@ private:
     std::thread accept_thread_;
     int recv_thread_count_ = 4;
     std::vector<std::thread> recv_threads_;
-    std::thread send_thread_;
+    int send_thread_count_ = 1;
+    std::vector<std::thread> send_threads_;
     std::thread process_thread_;
 
     std::mutex client_mutex_;

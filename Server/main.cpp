@@ -1,10 +1,10 @@
 // main.cpp
-#include <csignal>
 #include <atomic>
+#include <csignal>
 #include <iostream>
 #include <string>
 
-#include "TcpServer.h"          // 네가 만든 서버 클래스
+#include "TcpServer.h" // 네가 만든 서버 클래스
 #include "json.hpp"
 
 using namespace std;
@@ -12,25 +12,25 @@ using namespace std::chrono;
 
 static std::atomic<bool> g_run{true};
 
-static void onSignal(int) 
+static void onSignal(int)
 {
     g_run = false;
 }
 
-int main(int argc, char** argv) 
+int main(int argc, char **argv)
 {
     // 포트 입력 (기본 55000)
     int port = 55000;
-    if (argc >= 2) 
+    if (argc >= 2)
     {
         port = std::stoi(argv[1]);
     }
 
     // SIGINT(Ctrl+C), SIGTERM 처리
-    signal(SIGINT,  onSignal);
+    signal(SIGINT, onSignal);
     signal(SIGTERM, onSignal);
 
-    try 
+    try
     {
         TcpServer server(port);
 
@@ -41,7 +41,7 @@ int main(int argc, char** argv)
         cout << "[Server] Press Ctrl+C to stop.\n";
 
         // 메인 루프: 신호 대기
-        while (g_run.load()) 
+        while (g_run.load())
         {
             this_thread::sleep_for(milliseconds(200));
         }
@@ -50,9 +50,8 @@ int main(int argc, char** argv)
         server.stop();
         cout << "[Server] Stopped.\n";
         return 0;
-
-    } 
-    catch (const std::exception& e) 
+    }
+    catch (const std::exception &e)
     {
         cerr << "[Fatal] " << e.what() << "\n";
         return 1;

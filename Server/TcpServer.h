@@ -9,7 +9,8 @@
 #include "Message.h"
 #include "Dispatcher.h"
 
-class TcpServer {
+class TcpServer
+{
 public:
     explicit TcpServer(int port);
     ~TcpServer();
@@ -17,9 +18,10 @@ public:
     void start();
     void stop();
 
-    void sendToClient(int client_id, const nlohmann::json& json);
+    void sendToClient(int client_id, const nlohmann::json &json);
 
-    void addHandler(const std::string& type, Dispatcher::Handler handler) {
+    void addHandler(const std::string &type, Dispatcher::Handler handler)
+    {
         dispatcher_.registerHandler(type, std::move(handler));
     }
 

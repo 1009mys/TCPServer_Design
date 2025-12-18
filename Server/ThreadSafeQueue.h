@@ -2,18 +2,22 @@
 #include <mutex>
 #include <condition_variable>
 
-template<typename T>
-class ThreadSafeQueue {
+template <typename T>
+class ThreadSafeQueue
+{
 public:
-    void push(const T& value) {
+    void push(const T &value)
+    {
         std::lock_guard<std::mutex> lock(mutex_);
         queue_.push(value);
         cv_.notify_one();
     }
 
-    T pop() {
+    T pop()
+    {
         std::unique_lock<std::mutex> lock(mutex_);
-        cv_.wait(lock, [&] { return !queue_.empty(); });
+        cv_.wait(lock, [&]
+                 { return !queue_.empty(); });
         T val = queue_.front();
         queue_.pop();
         return val;

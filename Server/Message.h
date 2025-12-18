@@ -1,6 +1,7 @@
 #include "json.hpp"
 
-struct Message {
+struct Message
+{
     int client_id;
     nlohmann::json json;
 };

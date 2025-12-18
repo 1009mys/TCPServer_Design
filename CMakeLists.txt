@@ -26,7 +26,9 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Options: BUILD_SERVER=${BUILD_SERVER}, BUILD_SERVER_LIBS=${BUILD_SERVER_LIBS}, BUILD_CLIENT=${BUILD_CLIENT}")
 
 # ===== Subdirectories =====
-add_subdirectory(Server)
+if (BUILD_SERVER OR BUILD_SERVER_LIBS)
+    add_subdirectory(Server)
+endif()
 
 if(BUILD_CLIENT)
     add_subdirectory(Client)

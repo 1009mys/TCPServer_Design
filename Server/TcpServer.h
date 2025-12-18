@@ -28,7 +28,7 @@ public:
 
 private:
     void acceptLoop();
-    void recvLoop();
+    void recvLoop(int thread_index);
     void sendLoop();
     void processLoop();
 
@@ -40,13 +40,18 @@ private:
     std::atomic<bool> running_{false};
 
     std::thread accept_thread_;
-    std::thread recv_thread_;
+    int recv_thread_count_ = 4;
+    std::vector<std::thread> recv_threads_;
     std::thread send_thread_;
     std::thread process_thread_;
 
     std::mutex client_mutex_;
     std::map<int, int> clients_; // client_id -> socket_fd
     int next_client_id_ = 1;
+    
+    // 소켓 할당: socket_fd -> assigned_thread_index (경쟁 상태 방지)
+    std::mutex socket_assignment_mutex_;
+    std::map<int, int> socket_assignments_;
 
     Dispatcher dispatcher_;
     RequestHandler handler_;

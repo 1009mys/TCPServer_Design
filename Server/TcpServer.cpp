@@ -109,7 +109,10 @@ void TcpServer::start()
     running_ = true;
 
     accept_thread_ = std::thread(&TcpServer::acceptLoop, this);
-    recv_thread_ = std::thread(&TcpServer::recvLoop, this);
+    for (int i = 0; i < recv_thread_count_; ++i)
+    {
+        recv_threads_.emplace_back(&TcpServer::recvLoop, this, i);
+    }
     send_thread_ = std::thread(&TcpServer::sendLoop, this);
     process_thread_ = std::thread(&TcpServer::processLoop, this);
 
@@ -123,10 +126,17 @@ void TcpServer::stop()
     running_ = false;
     close(server_fd_);
 
+    // 큐 종료 신호 전송
+    recv_queue_.shutdown();
+    send_queue_.shutdown();
+
     if (accept_thread_.joinable())
         accept_thread_.join();
-    if (recv_thread_.joinable())
-        recv_thread_.join();
+    for (auto &t : recv_threads_)
+    {
+        if (t.joinable())
+            t.join();
+    }
     if (send_thread_.joinable())
         send_thread_.join();
     if (process_thread_.joinable())
@@ -148,23 +158,40 @@ void TcpServer::acceptLoop()
         cout << "[TcpServer] New client connected: fd=" << client_fd << "\n";
 #endif
 
-        std::lock_guard<std::mutex> lock(client_mutex_);
-        clients_[next_client_id_++] = client_fd;
+        int client_id;
+        {
+            std::lock_guard<std::mutex> lock(client_mutex_);
+            client_id = next_client_id_++;
+            clients_[client_id] = client_fd;
+        }
+        
+        // 라운드 로빈으로 스레드에 할당
+        {
+            std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
+            socket_assignments_[client_fd] = client_id % recv_thread_count_;
+        }
     }
 }
 
-void TcpServer::recvLoop()
+void TcpServer::recvLoop(int thread_index)
 {
     while (running_)
     {
-        // 1) clients 스냅샷
+        // 1) 이 스레드에 할당된 클라이언트만 가져오기
         std::vector<std::pair<int, int>> snapshot;
         snapshot.reserve(64);
 
         {
-            std::lock_guard<std::mutex> lock(client_mutex_);
+            std::lock_guard<std::mutex> lock1(client_mutex_);
+            std::lock_guard<std::mutex> lock2(socket_assignment_mutex_);
             for (auto &[cid, fd] : clients_)
-                snapshot.push_back({cid, fd});
+            {
+                auto it = socket_assignments_.find(fd);
+                if (it != socket_assignments_.end() && it->second == thread_index)
+                {
+                    snapshot.push_back({cid, fd});
+                }
+            }
         }
 
         if (snapshot.empty())
@@ -199,18 +226,30 @@ void TcpServer::recvLoop()
             if (!FD_ISSET(fd, &rfds))
                 continue;
 
+#ifdef DEBUG_BUILD
+            cout << "[TcpServer] Data available from client_id=" << client_id << " fd=" << fd << "\n";
+#endif
+
             uint32_t len_net = 0;
             if (!recvAll(fd, &len_net, sizeof(len_net)))
             {
 #ifdef DEBUG_BUILD
                 std::cout << "[TcpServer] Client disconnected (len) client_id=" << client_id << "\n";
 #endif
-                std::lock_guard<std::mutex> lock(client_mutex_);
-                auto it = clients_.find(client_id);
-                if (it != clients_.end())
+                int fd_to_close;
                 {
-                    ::close(it->second);
-                    clients_.erase(it);
+                    std::lock_guard<std::mutex> lock(client_mutex_);
+                    auto it = clients_.find(client_id);
+                    if (it != clients_.end())
+                    {
+                        fd_to_close = it->second;
+                        ::close(it->second);
+                        clients_.erase(it);
+                    }
+                }
+                {
+                    std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
+                    socket_assignments_.erase(fd_to_close);
                 }
                 continue;
             }
@@ -221,12 +260,20 @@ void TcpServer::recvLoop()
 #ifdef DEBUG_BUILD
                 std::cout << "[TcpServer] Invalid length=" << len << " client_id=" << client_id << "\n";
 #endif
-                std::lock_guard<std::mutex> lock(client_mutex_);
-                auto it = clients_.find(client_id);
-                if (it != clients_.end())
+                int fd_to_close;
                 {
-                    ::close(it->second);
-                    clients_.erase(it);
+                    std::lock_guard<std::mutex> lock(client_mutex_);
+                    auto it = clients_.find(client_id);
+                    if (it != clients_.end())
+                    {
+                        fd_to_close = it->second;
+                        ::close(it->second);
+                        clients_.erase(it);
+                    }
+                }
+                {
+                    std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
+                    socket_assignments_.erase(fd_to_close);
                 }
                 continue;
             }
@@ -237,12 +284,20 @@ void TcpServer::recvLoop()
 #ifdef DEBUG_BUILD
                 std::cout << "[TcpServer] Client disconnected (payload) client_id=" << client_id << "\n";
 #endif
-                std::lock_guard<std::mutex> lock(client_mutex_);
-                auto it = clients_.find(client_id);
-                if (it != clients_.end())
+                int fd_to_close;
                 {
-                    ::close(it->second);
-                    clients_.erase(it);
+                    std::lock_guard<std::mutex> lock(client_mutex_);
+                    auto it = clients_.find(client_id);
+                    if (it != clients_.end())
+                    {
+                        fd_to_close = it->second;
+                        ::close(it->second);
+                        clients_.erase(it);
+                    }
+                }
+                {
+                    std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
+                    socket_assignments_.erase(fd_to_close);
                 }
                 continue;
             }
@@ -275,20 +330,32 @@ void TcpServer::sendLoop()
 {
     while (running_)
     {
-        Message msg = send_queue_.pop();
+        auto msg_opt = send_queue_.pop();
+        if (!msg_opt.has_value())
+            break; // shutdown
+
+        Message msg = msg_opt.value();
 
         std::lock_guard<std::mutex> lock(client_mutex_);
-        if (clients_.count(msg.client_id) == 0)
+        auto it = clients_.find(msg.client_id);
+        if (it == clients_.end())
             continue;
+
 #ifdef DEBUG_BUILD
         cout << "[TcpServer] Sending message to client " << msg.client_id << "\n";
 #endif
-        int fd = clients_[msg.client_id];
+        int fd = it->second;
         std::string data = msg.json.dump();
 
         uint32_t len = htonl(data.size());
-        send(fd, &len, sizeof(len), 0);
-        send(fd, data.data(), data.size(), 0);
+        if (!sendAll(fd, &len, sizeof(len)) || !sendAll(fd, data.data(), data.size()))
+        {
+#ifdef DEBUG_BUILD
+            std::cout << "[TcpServer] Failed to send to client " << msg.client_id << ", closing\n";
+#endif
+            ::close(fd);
+            clients_.erase(it);
+        }
     }
 }
 
@@ -301,9 +368,11 @@ void TcpServer::processLoop()
 {
     while (running_)
     {
-        Message msg = recv_queue_.pop();
-        if (!running_)
-            break;
+        auto msg_opt = recv_queue_.pop();
+        if (!msg_opt.has_value())
+            break; // shutdown
+
+        Message msg = msg_opt.value();
 
         // 종료용
         if (msg.json.contains("type") && msg.json["type"] == "_quit")

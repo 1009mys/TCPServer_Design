@@ -46,27 +46,6 @@ bool TcpServer::sendAll(int fd, const void *buf, size_t len)
 
 TcpServer::TcpServer(int port) : port_(port)
 {
-    // ping -> pong
-    dispatcher_.registerHandler(
-        "ping",
-        [this](Message msg)
-        {
-            return handler_.handlePing(msg);
-        });
-
-    dispatcher_.registerHandler(
-        "echo",
-        [this](Message msg)
-        {
-            return handler_.handleEcho(msg);
-        });
-
-    dispatcher_.registerHandler(
-        "add",
-        [this](Message msg)
-        {
-            return handler_.handleAdd(msg);
-        });
 }
 
 TcpServer::~TcpServer()

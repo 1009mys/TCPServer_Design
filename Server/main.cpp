@@ -32,7 +32,13 @@ int main(int argc, char **argv)
 
     try
     {
+        ExampleHandler handler;
+
         TcpServer server(port);
+
+        server.addHandler("ping", ExampleHandler::handlePing);
+        server.addHandler("echo", ExampleHandler::handleEcho);
+        server.addHandler("add", ExampleHandler::handleAdd);
 
         // 서버 시작
         server.start();

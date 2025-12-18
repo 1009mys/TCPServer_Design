@@ -1,6 +1,10 @@
 #include <unordered_map>
 #include <functional>
+#include <utility>
+
 #include "json.hpp"
+#include "Message.h"
+#include "RequestHandler.h"
 
 using namespace nlohmann;
 using namespace std;

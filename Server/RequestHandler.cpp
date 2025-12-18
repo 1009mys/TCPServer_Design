@@ -6,7 +6,35 @@
 using nlohmann::json;
 using namespace std;
 
-json RequestHandler::handlePing(const Message &msg)
+nlohmann::json ExampleHandler::handle(const Message &msg)
+{
+    const json &req = msg.json;
+    const string type = req.value("type", "");
+
+    if (type == "ping")
+    {
+        return handlePing(msg);
+    }
+    else if (type == "echo")
+    {
+        return handleEcho(msg);
+    }
+    else if (type == "add")
+    {
+        return handleAdd(msg);
+    }
+    else
+    {
+        json res;
+        res["type"] = "error";
+        res["ok"] = false;
+        res["req_id"] = req.value("req_id", nullptr);
+        res["error"] = "unknown_type: " + type;
+        return res;
+    }
+}
+
+json ExampleHandler::handlePing(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -37,7 +65,7 @@ json RequestHandler::handlePing(const Message &msg)
     return res;
 }
 
-json RequestHandler::handleEcho(const Message &msg)
+json ExampleHandler::handleEcho(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -67,7 +95,7 @@ json RequestHandler::handleEcho(const Message &msg)
     return res;
 }
 
-json RequestHandler::handleAdd(const Message &msg)
+json ExampleHandler::handleAdd(const Message &msg)
 {
     /*
      * 요청 형식:

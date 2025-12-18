@@ -54,7 +54,6 @@ private:
     std::map<int, int> socket_assignments_;
 
     Dispatcher dispatcher_;
-    RequestHandler handler_;
 
     ThreadSafeQueue<Message> recv_queue_;
     ThreadSafeQueue<Message> send_queue_;

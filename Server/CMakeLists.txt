@@ -7,14 +7,14 @@ option(BUILD_SERVER_LIBS "Build server libraries (static/shared)" ON)
 # 공통 소스
 set(CPP_SOURCES
     TcpServer.cpp
-    RequestHandler.cpp
+    ExampleMessageHandler.cpp
 )
 
 set(CPP_HEADERS
     Dispatcher.h
     Message.h
     ThreadSafeQueue.h
-    RequestHandler.h
+    ExampleMessageHandler.h
     TcpServer.h
 )
 

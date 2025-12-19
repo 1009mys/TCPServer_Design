@@ -4,7 +4,7 @@
 
 #include "json.hpp"
 #include "Message.h"
-#include "RequestHandler.h"
+#include "ExampleMessageHandler.h"
 
 using namespace nlohmann;
 using namespace std;

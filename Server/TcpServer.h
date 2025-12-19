@@ -9,7 +9,7 @@
 #include "ThreadSafeQueue.h"
 #include "Message.h"
 #include "Dispatcher.h"
-#include "RequestHandler.h"
+#include "ExampleMessageHandler.h"
 #include "Logger.h"
 
 class TcpServer

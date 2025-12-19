@@ -8,7 +8,7 @@ using nlohmann::json;
 using namespace std;
 
 
-json ExampleHandler::handlePing(const Message &msg)
+json ExampleMessageHandler::handlePing(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -36,7 +36,7 @@ json ExampleHandler::handlePing(const Message &msg)
     return res;
 }
 
-json ExampleHandler::handleEcho(const Message &msg)
+json ExampleMessageHandler::handleEcho(const Message &msg)
 {
     /*
      * 요청 형식:
@@ -63,7 +63,7 @@ json ExampleHandler::handleEcho(const Message &msg)
     return res;
 }
 
-json ExampleHandler::handleAdd(const Message &msg)
+json ExampleMessageHandler::handleAdd(const Message &msg)
 {
     /*
      * 요청 형식:

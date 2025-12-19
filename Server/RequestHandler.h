@@ -4,7 +4,7 @@
 #include "Message.h"
 
 
-class ExampleHandler
+class ExampleMessageHandler
 {
 public:
     static nlohmann::json handlePing(const Message &msg);

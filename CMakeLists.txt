@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(TCPServer_Design LANGUAGES CXX)
+project(TCPServer_Design LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 # ===== Build options (빌드 스크립트에서 -D로 제어) =====
 option(BUILD_SERVER "Build tcp_server executable" ON)

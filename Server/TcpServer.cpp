@@ -110,7 +110,7 @@ void TcpServer::start()
 void TcpServer::stop()
 {
     running_ = false;
-    
+
     close(server_fd_);
 
     // 큐 종료 신호 전송
@@ -140,7 +140,6 @@ void TcpServer::stop()
         if (t.joinable())
             t.join();
     }
-
 }
 
 void TcpServer::acceptLoop()
@@ -151,11 +150,11 @@ void TcpServer::acceptLoop()
         fd_set rfds;
         FD_ZERO(&rfds);
         FD_SET(server_fd_, &rfds);
-        
+
         timeval tv{};
         tv.tv_sec = 0;
         tv.tv_usec = 500 * 1000; // 500ms timeout
-        
+
         int ready = ::select(server_fd_ + 1, &rfds, nullptr, nullptr, &tv);
         if (ready < 0)
         {
@@ -165,13 +164,13 @@ void TcpServer::acceptLoop()
         }
         if (ready == 0)
             continue; // timeout, running_ 재확인
-            
+
         // accept 가능
         sockaddr_in client_addr{};
         socklen_t len = sizeof(client_addr);
 
         int client_fd = accept(server_fd_, (sockaddr *)&client_addr, &len);
-        
+
         if (client_fd < 0)
         {
             if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
@@ -189,7 +188,7 @@ void TcpServer::acceptLoop()
             client_id = next_client_id_++;
             clients_[client_id] = client_fd;
         }
-        
+
         // 라운드 로빈으로 스레드에 할당
         {
             std::lock_guard<std::mutex> lock(socket_assignment_mutex_);

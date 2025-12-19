@@ -23,9 +23,9 @@ public:
 
     void sendToClient(int client_id, const nlohmann::json &json);
 
-    void addHandler(const std::string &type, Dispatcher::Handler handler)
+    void addMessageHandler(const std::string &type, Dispatcher::MessageHandler handler)
     {
-        dispatcher_.registerHandler(type, std::move(handler));
+        dispatcher_.registerMessageHandler(type, std::move(handler));
     }
 
     void setRecvThreadCount(int count)
@@ -64,7 +64,7 @@ private:
     std::mutex client_mutex_;
     std::map<int, int> clients_; // client_id -> socket_fd
     int next_client_id_ = 1;
-    
+
     // 소켓 할당: socket_fd -> assigned_thread_index (경쟁 상태 방지)
     std::mutex socket_assignment_mutex_;
     std::map<int, int> socket_assignments_;

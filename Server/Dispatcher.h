@@ -12,9 +12,9 @@ using namespace std;
 class Dispatcher
 {
 public:
-    using Handler = function<json(const Message &)>;
+    using MessageHandler = function<json(const Message &)>;
 
-    void registerHandler(const string &type, Handler fn)
+    void registerMessageHandler(const string &type, MessageHandler fn)
     {
         handlers_[type] = move(fn);
     }
@@ -55,7 +55,7 @@ public:
     }
 
 private:
-    unordered_map<string, Handler> handlers_;
+    unordered_map<string, MessageHandler> handlers_;
 
     static json makeError(const json &req, const string &reason)
     {

@@ -18,7 +18,7 @@ static void onSignal(int)
     g_run = false;
 }
 
-int main(int argc, char **argv)
+int initServer(int argc, char **argv)
 {
     // 포트 입력 (기본 55000)
     int port = 55000;
@@ -33,17 +33,18 @@ int main(int argc, char **argv)
 
     try
     {
+        // 서버 객체 생성
         TcpServer server(port);
 
         // 로그 레벨 설정 (DEBUG, INFO, WARN, ERROR)
         server.setLogLevel(LogLevel::DEBUG);
-        
+
         server.setRecvThreadCount(1);
 
-        ExampleHandler handler;
-        server.addHandler("ping", ExampleHandler::handlePing);
-        server.addHandler("echo", ExampleHandler::handleEcho);
-        server.addHandler("add", ExampleHandler::handleAdd);
+        ExampleMessageHandler handler;
+        server.addMessageHandler("ping", ExampleMessageHandler::handlePing);
+        server.addMessageHandler("echo", ExampleMessageHandler::handleEcho);
+        server.addMessageHandler("add", ExampleMessageHandler::handleAdd);
 
         // 서버 시작
         server.start();
@@ -67,4 +68,9 @@ int main(int argc, char **argv)
         LOG_ERROR("[Fatal] ", e.what());
         return 1;
     }
+}
+
+int main(int argc, char **argv)
+{
+    return initServer(argc, argv);
 }

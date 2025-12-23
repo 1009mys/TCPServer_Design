@@ -6,6 +6,9 @@
 #include <iomanip>
 #include <ctime>
 
+namespace msgnet
+{
+
 enum class LogLevel
 {
     DEBUG = 0,
@@ -126,3 +129,5 @@ private:
 #define LOG_INFO(...) Logger::instance().info(__VA_ARGS__)
 #define LOG_WARN(...) Logger::instance().warn(__VA_ARGS__)
 #define LOG_ERROR(...) Logger::instance().error(__VA_ARGS__)
+
+} // namespace msgnet

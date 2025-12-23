@@ -12,9 +12,35 @@
 #include "ExampleMessageHandler.h"
 #include "Logger.h"
 
+ namespace msgnet 
+ { 
+
+struct TcpServerConfig
+{
+    int server_fd;
+    int port;
+    int accept_thread_count;
+    int recv_thread_count;
+    int process_thread_count;
+    int send_thread_count;
+    LogLevel log_level;
+
+};
+
+enum class ExceptionType
+    {
+        SOCKET_CREATION_FAILED,
+        BIND_FAILED,
+        LISTEN_FAILED,
+        DISCONNECT,
+        INVALID_LENGTH,
+    };
+
 class TcpServer
 {
 public:
+    
+    
     explicit TcpServer(int port);
     ~TcpServer();
 
@@ -28,6 +54,16 @@ public:
         dispatcher_.registerMessageHandler(type, std::move(handler));
     }
 
+    void setAcceptThreadCount(int count)
+    {
+        accept_thread_count_ = count;
+    }
+
+    void setProcessThreadCount(int count)
+    {
+        process_thread_count_ = count;
+    }
+
     void setRecvThreadCount(int count)
     {
         recv_thread_count_ = count;
@@ -36,6 +72,21 @@ public:
     void setLogLevel(LogLevel level)
     {
         Logger::instance().setLevel(level);
+    }
+
+    void setStartProbe(std::function<void(const TcpServerConfig &)> probe)
+    {
+        start_probe_ = std::move(probe);
+    }
+
+    void setStopProbe(std::function<void(const TcpServerConfig &)> probe)
+    {
+        stop_probe_ = std::move(probe);
+    }
+
+    void setExceptionProbe(std::function<void(const int client_id, const int socket_fd, ExceptionType et)> probe)
+    {
+        exception_probe_ = std::move(probe);
     }
 
 private:
@@ -73,4 +124,10 @@ private:
 
     ThreadSafeQueue<Message> recv_queue_;
     ThreadSafeQueue<Message> send_queue_;
+
+    std::function<void(const TcpServerConfig &)> start_probe_ = nullptr;
+    std::function<void(const TcpServerConfig &)> stop_probe_ = nullptr;
+    std::function<void(const int client_id, const int socket_fd, ExceptionType et)> exception_probe_ = nullptr;
 };
+
+} // namespace msgnet

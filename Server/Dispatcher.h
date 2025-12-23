@@ -6,24 +6,24 @@
 #include "Message.h"
 #include "ExampleMessageHandler.h"
 
-using namespace nlohmann;
-using namespace std;
+namespace msgnet
+{
 
 class Dispatcher
 {
 public:
-    using MessageHandler = function<json(const Message &)>;
+    using MessageHandler = std::function<nlohmann::json(const Message &)>;
 
-    void registerMessageHandler(const string &type, MessageHandler fn)
+    void registerMessageHandler(const std::string &type, MessageHandler fn)
     {
-        handlers_[type] = move(fn);
+        handlers_[type] = std::move(fn);
     }
 
-    json dispatch(const Message &msg) const
+    nlohmann::json dispatch(const Message &msg) const
     {
         // 통신에 필요한 항목만 체크한다.
 
-        const json &req = msg.json;
+        const nlohmann::json &req = msg.json;
         const int client_id = msg.client_id;
 
         // type 체크
@@ -32,12 +32,7 @@ public:
             return makeError(req, "missing_or_invalid_type");
         }
 
-        if (!req.contains("req_id"))
-        {
-            return makeError(req, "missing_req_id");
-        }
-
-        const string type = req["type"].get<string>();
+        const std::string type = req["type"].get<std::string>();
         auto it = handlers_.find(type);
         if (it == handlers_.end())
         {
@@ -48,18 +43,18 @@ public:
         {
             return it->second(msg);
         }
-        catch (const exception &e)
+        catch (const std::exception &e)
         {
-            return makeError(req, string("handler_exception: ") + e.what());
+            return makeError(req, std::string("handler_exception: ") + e.what());
         }
     }
 
 private:
-    unordered_map<string, MessageHandler> handlers_;
+    std::unordered_map<std::string, MessageHandler> handlers_;
 
-    static json makeError(const json &req, const string &reason)
+    static nlohmann::json makeError(const nlohmann::json &req, const std::string &reason)
     {
-        json res;
+        nlohmann::json res;
         res["type"] = "error";
         res["ok"] = false;
         res["reason"] = reason;
@@ -68,3 +63,5 @@ private:
         return res;
     }
 };
+
+} // namespace msgnet

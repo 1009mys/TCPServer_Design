@@ -7,6 +7,9 @@
 using nlohmann::json;
 using namespace std;
 
+namespace msgnet
+{
+
 
 json ExampleMessageHandler::handlePing(const Message &msg)
 {
@@ -96,3 +99,5 @@ json ExampleMessageHandler::handleAdd(const Message &msg)
 
     return res;
 }
+
+} // namespace msgnet

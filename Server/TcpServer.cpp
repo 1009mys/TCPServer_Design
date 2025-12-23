@@ -6,6 +6,9 @@
 
 using namespace std;
 
+namespace msgnet
+{
+
 bool TcpServer::recvAll(int fd, void *buf, size_t len)
 {
     char *p = static_cast<char *>(buf);
@@ -90,20 +93,30 @@ void TcpServer::start()
     running_ = true;
 
     for (int i = 0; i < accept_thread_count_; ++i)
-    {
         accept_threads_.emplace_back(&TcpServer::acceptLoop, this);
-    }
     for (int i = 0; i < recv_thread_count_; ++i)
-    {
         recv_threads_.emplace_back(&TcpServer::recvLoop, this, i);
-    }
     for (int i = 0; i < process_thread_count_; ++i)
-    {
         process_threads_.emplace_back(&TcpServer::processLoop, this);
-    }
     for (int i = 0; i < send_thread_count_; ++i)
-    {
         send_threads_.emplace_back(&TcpServer::sendLoop, this);
+    
+    // set default exception probe to no-op if not set
+    if (!exception_probe_)
+    {
+        exception_probe_ = [](const int, const int, ExceptionType) {};
+    }
+
+    if (start_probe_)
+    {
+        start_probe_(TcpServerConfig{
+            .port = port_,
+            .accept_thread_count = accept_thread_count_,
+            .recv_thread_count = recv_thread_count_,
+            .process_thread_count = process_thread_count_,
+            .send_thread_count = send_thread_count_,
+            .log_level = Logger::instance().getLevel()
+        });
     }
 }
 
@@ -158,8 +171,11 @@ void TcpServer::acceptLoop()
         int ready = ::select(server_fd_ + 1, &rfds, nullptr, nullptr, &tv);
         if (ready < 0)
         {
+            exception_probe_(-1, server_fd_, ExceptionType::SOCKET_CREATION_FAILED);
             if (errno == EINTR)
+            {
                 continue;
+            }
             break; // 에러 발생
         }
         if (ready == 0)
@@ -174,7 +190,10 @@ void TcpServer::acceptLoop()
         if (client_fd < 0)
         {
             if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
+            {
+                exception_probe_(-1, server_fd_, ExceptionType::SOCKET_CREATION_FAILED);
                 continue;
+            }
             if (!running_)
                 break; // 종료 중
             continue;
@@ -271,6 +290,8 @@ void TcpServer::recvLoop(int thread_index)
                     std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
                     socket_assignments_.erase(fd_to_close);
                 }
+                
+                exception_probe_(client_id, fd, ExceptionType::DISCONNECT);
                 continue;
             }
 
@@ -293,6 +314,8 @@ void TcpServer::recvLoop(int thread_index)
                     std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
                     socket_assignments_.erase(fd_to_close);
                 }
+
+                exception_probe_(client_id, fd, ExceptionType::INVALID_LENGTH);
                 continue;
             }
 
@@ -315,6 +338,8 @@ void TcpServer::recvLoop(int thread_index)
                     std::lock_guard<std::mutex> lock(socket_assignment_mutex_);
                     socket_assignments_.erase(fd_to_close);
                 }
+
+                exception_probe_(client_id, fd, ExceptionType::DISCONNECT);
                 continue;
             }
 
@@ -330,6 +355,9 @@ void TcpServer::recvLoop(int thread_index)
                         {"ok", false},
                         {"reason", "invalid_json"}};
                 send_queue_.push({client_id, err});
+
+                exception_probe_(client_id, fd, ExceptionType::INVALID_LENGTH);
+                
                 continue;
             }
             LOG_DEBUG("[TcpServer] Received message from client ", client_id);
@@ -393,3 +421,5 @@ void TcpServer::processLoop()
         send_queue_.push({msg.client_id, response});
     }
 }
+
+} // namespace msgnet
